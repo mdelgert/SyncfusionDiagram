@@ -8,6 +8,18 @@
 <PageTitle>Diagram</PageTitle>
 <h2>Diagram</h2>
 <div class="parent">
+    <div class="btn">
+        <SfButton IsPrimary="true" OnClick="@ClearDiagram">Clear</SfButton>
+    </div>
+    <div class="btn">
+        <SfButton IsPrimary="true" OnClick="@ReloadDiagram">Reload</SfButton>
+    </div>
+    <div class="btn">
+        <SfButton IsPrimary="true" OnClick="@SaveDiagram">Save Diagram</SfButton>
+    </div>
+    <div class="btn">
+        <SfButton IsPrimary="true" OnClick="@LoadDiagram">Load Diagram</SfButton>
+    </div>
 </div>
 <div style="width: 100%">
     <div style="width:240px;height:100%;float:left;">
@@ -23,28 +35,29 @@
                 </VerticalGridLines>
             </SnapSettings>
             <ContextMenuSettings Show="true" Items="@ContextMenuItems" ShowCustomMenuOnly="true"
-                                 ContextMenuOpening="ContextMenuOpening" ContextMenuItemClicked="ContextMenuItemClicked"></ContextMenuSettings>
+            ContextMenuOpening="ContextMenuOpening" ContextMenuItemClicked="ContextMenuItemClicked"></ContextMenuSettings>
         </SfDiagramComponent>
     </div>
 </div>
 
 <style>
     .ulstyle {
-        margin: 0px;
-        padding-left: 20px;
-        display: inline-block;
+    margin: 0px;
+    padding-left: 20px;
+    display: inline-block;
     }
 
     .list {
-        float: left;
-        line-height: 20px;
-        margin: 10px;
-        min-width: 340px;
+    float: left;
+    line-height: 20px;
+    margin: 10px;
+    min-width: 340px;
     }
 </style>
 
 @code {
     private int connectorCount = 0;
+    private string diagramString = "";
     List<ContextMenuItem> ContextMenuItems = new List<ContextMenuItem>();
     SnapConstraints snapConstraints = SnapConstraints.All & ~SnapConstraints.ShowLines;
     DiagramSelectionSettings selectionSettings = new DiagramSelectionSettings() { Constraints = SelectorConstraints.All & ~SelectorConstraints.Rotate };
@@ -70,6 +83,40 @@
     private DiagramObjectCollection<NodeBase> connectorSymbols = new DiagramObjectCollection<NodeBase>();
     [Inject]
     protected IJSRuntime jsRuntime { get; set; }
+
+    private void ClearDiagram()
+    {
+        swimlanes.Clear();
+        swimlanes = new DiagramObjectCollection<Swimlane>();
+        nodes.Clear();
+        nodes = new DiagramObjectCollection<Node>();
+        connectors.Clear();
+        connectors = new DiagramObjectCollection<Connector>();
+        Diagram.RefreshDataSourceAsync();
+    }
+
+    private void ReloadDiagram()
+    {
+        // Why does this only work if I run clear separately when I click clear diagram then reload?
+        // Why can't I just call clear in the reload method?
+        //ClearDiagram();
+        InitDiagramModel();
+    }
+
+    private void SaveDiagram()
+    {
+        diagramString = Diagram.SaveDiagram();
+    }
+
+    private async Task LoadDiagram()
+    {
+        //Why does this not work?
+        if (diagramString != "")
+        {
+            await Diagram.LoadDiagramAsync(diagramString);
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
@@ -82,14 +129,14 @@
     {
         GridLineIntervals = new double[] {
             1, 9, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75, 0.25, 9.75,
-    };
+        };
         ContextMenuItems = new List<ContextMenuItem>()
         {
-        new ContextMenuItem(){ID="Copy", Text = "Copy", IconCss = "e-menu-icon e-icons e-copy"},
-        new ContextMenuItem(){ID="Cut",Text = "Cut", IconCss = "e-menu-icon e-icons e-cut"},
-        new ContextMenuItem(){ID="Paste",Text = "Paste", IconCss = "e-menu-icon e-icons e-paste"},
-        new ContextMenuItem(){ID="InsertLaneBefore",Text = "Insert Lane Before", IconCss="e-menu-icon e-icons e-empty"},
-        new ContextMenuItem(){ID="InsertLaneAfter",Text = "Insert Lane After", IconCss="e-menu-icon e-icons e-empty"}
+            new ContextMenuItem(){ID="Copy", Text = "Copy", IconCss = "e-menu-icon e-icons e-copy"},
+            new ContextMenuItem(){ID="Cut",Text = "Cut", IconCss = "e-menu-icon e-icons e-cut"},
+            new ContextMenuItem(){ID="Paste",Text = "Paste", IconCss = "e-menu-icon e-icons e-paste"},
+            new ContextMenuItem(){ID="InsertLaneBefore",Text = "Insert Lane Before", IconCss="e-menu-icon e-icons e-empty"},
+            new ContextMenuItem(){ID="InsertLaneAfter",Text = "Insert Lane After", IconCss="e-menu-icon e-icons e-empty"}
         };
         InitDiagramModel();
         InitPaletteModel();
@@ -178,6 +225,7 @@
             new Swimlane()
             {
                 ID = "swimlane", OffsetX = 350, OffsetY = 150,
+                ZIndex = 10,
                 Orientation = Orientation.Horizontal,
                 Height = 0,
                 Width = 0,
@@ -212,6 +260,7 @@
                 {
                     new Lane(){
                         ID = "lane1",
+                        ZIndex = 20,
                         Height = 115,
                         Header = new SwimlaneHeader()
                         {
@@ -249,6 +298,7 @@
                     },
                     new Lane(){
                         ID = "lane2",
+                        ZIndex = 20,
                         Height = 115,
                         Header = new SwimlaneHeader()
                         {
@@ -364,6 +414,7 @@
     private void OnNodeCreating(IDiagramObject obj)
     {
         Node node = obj as Node;
+        node.ZIndex = 30;
         if (node != null)
         {
             node.Style.StrokeColor = "#717171";
@@ -388,6 +439,7 @@
     private void OnConnectorCreating(IDiagramObject obj)
     {
         Connector connector = obj as Connector;
+        connector.ZIndex = 40;
         if (connector.ID.IndexOf("Link21") != -1)
         {
             connector.Type = ConnectorSegmentType.Straight;
